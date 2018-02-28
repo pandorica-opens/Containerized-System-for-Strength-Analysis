@@ -15,11 +15,15 @@ from OCC.BRepOffsetAPI import BRepOffsetAPI_MakePipe
 from OCC.BRepAlgoAPI import BRepAlgoAPI_Fuse
 from OCC.BRepPrimAPI import BRepPrimAPI_MakeSphere
 from OCC.BRepAlgoAPI import BRepAlgoAPI_Cut
+from OCC.Display.SimpleGui import init_display
+from OCC.TopoDS import TopoDS_Shape
+from OCC.StlAPI import StlAPI_Reader
+import subprocess
+from subprocess import PIPE, STDOUT
 
 
 def DisplayShapeFunc(shape):
     
-    print("Not HW")
     caller_id = 0
     def DisplayShape(shape,
                          vertex_shader=None,
@@ -86,10 +90,53 @@ def pipe_3(radius_pipe, radius_sphere):
     glued3 = BRepAlgoAPI_Fuse(glued2, sphere2).Shape()
     glued4 = BRepAlgoAPI_Fuse(glued3, pipe3).Shape()
     return glued4
+
+def Mesh(shape):
+    mesh = BRepMesh_IncrementalMesh(shape, 0.6)
+    mesh.Perform()
+
+def stl_file(name, shape):
+    stl_file = "./" + name + "_low_resolution.stl"
+    stl_exporter = StlAPI_Writer()
+    stl_exporter.SetASCIIMode(True)  # change to False if you need binary export
+    stl_exporter.Write(shape, stl_file)
+    # then we change the mesh resolution
+    #mesh.SetDeflection(0.05)
+    stl_reader = StlAPI_Reader()
+    fan_shp = TopoDS_Shape()
+    stl_reader.Read(fan_shp, stl_file)
+    exproted = DisplayShapeFunc(fan_shp)
+    display(exproted)
+    print(stl_file)
     
 
-def fib(n):
-    a = b = 1
-    for i in range(n - 2):
-        a, b = b, a + b
-    return b
+def getGeo(stl_filename):
+    geoCounter = 0
+    geoFile = "Merge \""+stl_filename+"\";\nSurface Loop(1) = {1};\nVolume(1) = {1};\nPhysical Volume(1) = {1};\n"
+    temp_file_name = "tmp_"+str(++geoCounter)+".geo"
+    if os.path.exists(temp_file_name): os.remove(temp_file_name)
+    text_file = open(temp_file_name, "w")
+    text_file.write(geoFile)
+    text_file.close()
+    return temp_file_name;
+
+def Geo_file(stl_file_name):
+    out = ""
+    try:
+        out = subprocess.check_output(
+                ["gmsh", "gmsh -3 -algo meshadapt tmp_0.geo -o SFM.msh"],
+                stderr=subprocess.STDOUT
+                ).strip().decode('utf8')
+    except subprocess.CalledProcessError as e:
+        out = e.output
+    getGeo(stl_file_name)
+    print(out)
+
+def gmsh_algo():
+    cmds = "gmsh -3 -algo meshadapt tmp_0.geo -o SFM.msh \n dolfin-convert SFM.msh sfm.xml \n ls -la"
+    def process(cmd):
+        popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
+        for stdout_line in iter(popen.stdout.readline, ""): # how to add popen.stderr.readline check?
+             yield stdout_line
+    for n in process(cmds):
+        print(n)
