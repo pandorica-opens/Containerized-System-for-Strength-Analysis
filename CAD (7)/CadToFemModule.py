@@ -96,18 +96,18 @@ def Mesh(shape):
     mesh.Perform()
 
 def stl_file(name, shape):
-    stl_file = "./" + name + "_low_resolution.stl"
+    stl_filename = "./" + name + "_low_resolution.stl"
     stl_exporter = StlAPI_Writer()
     stl_exporter.SetASCIIMode(True)  # change to False if you need binary export
-    stl_exporter.Write(shape, stl_file)
+    stl_exporter.Write(shape, stl_filename)
     # then we change the mesh resolution
     #mesh.SetDeflection(0.05)
     stl_reader = StlAPI_Reader()
     fan_shp = TopoDS_Shape()
-    stl_reader.Read(fan_shp, stl_file)
+    stl_reader.Read(fan_shp, stl_filename)
     exproted = DisplayShapeFunc(fan_shp)
     display(exproted)
-    
+    return stl_filename
 
 def getGeo(stl_filename):
     geoCounter = 0
