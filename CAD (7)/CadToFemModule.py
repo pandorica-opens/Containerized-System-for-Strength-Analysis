@@ -131,7 +131,17 @@ def Geo_file(stl_file_name):
     getGeo(stl_file_name)
     print(out)
 
-def gmsh_algo():
+
+def clean(stl_filename):  
+    directory="./tmp"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    files= ["sfm.xml", "SFM.msh", stl_filename, "sfm_physical_region.xml", "tmp_0.geo", "tmp_0.x3d"]
+    for i in files:
+        os.rename(i, "tmp/"+i)
+    
+def gmsh_algo(stl_filename):
     cmds = "gmsh -3 -algo meshadapt tmp_0.geo -o SFM.msh \n dolfin-convert SFM.msh sfm.xml \n ls -la"
     def process(cmd):
         popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=True)
@@ -139,3 +149,5 @@ def gmsh_algo():
              yield stdout_line
     for n in process(cmds):
         print(n)
+    clean(stl_filename)
+
