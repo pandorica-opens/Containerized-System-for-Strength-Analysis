@@ -22,6 +22,12 @@ import subprocess
 from subprocess import PIPE, STDOUT
 
 
+# function preparing given shape to be displayed using X3D in interactive way; returns geometry intance to display;
+# to display the shape use : " display(geometry) ", where geometry is the variable returned from def DisplayShapeFunc(shape)
+# for instance you can use it as:
+# geometry = DisplayShapeFunc(shape)
+# display(geometry)
+
 def DisplayShapeFunc(shape):
     
     caller_id = 0
@@ -59,6 +65,10 @@ def DisplayShapeFunc(shape):
             return HTML(Show("<inline url='./"+temp_file_name+"'> </inline> "))
    
     return DisplayShape(shape)
+
+# returns 
+#
+#
 
 def pipe(point1, point2, radius):
     makeWire = BRepBuilderAPI_MakeWire()
