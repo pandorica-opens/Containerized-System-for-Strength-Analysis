@@ -7,7 +7,7 @@ from OCC.StlAPI import StlAPI_Writer
 from OCC.BRepAlgoAPI import BRepAlgoAPI_Cut
 from OCC.BRepPrimAPI import BRepPrimAPI_MakeCylinder
 from OCC.BRepMesh import BRepMesh_IncrementalMesh
-from OCC.gp import gp_Pnt, gp_Ax2, gp_Dir, gp_Circ
+from OCC.gp import gp_Pnt, gp_Pln, gp_Ax2, gp_Dir, gp_Circ
 from OCC.GeomAPI import GeomAPI_PointsToBSpline
 from OCC.TColgp import TColgp_Array1OfPnt
 from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeEdge, BRepBuilderAPI_MakeWire, BRepBuilderAPI_MakeFace
@@ -20,6 +20,7 @@ from OCC.TopoDS import TopoDS_Shape
 from OCC.StlAPI import StlAPI_Reader
 import subprocess
 from subprocess import PIPE, STDOUT
+from OCC.ChFi2d import ChFi2d_AnaFilletAlgo
 
 
 # function preparing given shape to be displayed using X3D in interactive way; returns geometry intance to display;
@@ -66,9 +67,9 @@ def DisplayShapeFunc(shape):
    
     return DisplayShape(shape)
 
-# returns 
-#
-#
+# returns (TopoDS)shape of the whole pipe based on the parameters
+# point1 and point2 defines the wire(line) across which the pipe would go
+# radius defines the radius of the pipe
 
 def pipe(point1, point2, radius):
     makeWire = BRepBuilderAPI_MakeWire()
@@ -85,9 +86,60 @@ def pipe(point1, point2, radius):
     pipe = BRepOffsetAPI_MakePipe(wire, profile_face).Shape()
     return(pipe)
 
+
+def filletEdges(ed1, ed2):
+    radius = 0.3
+    f = ChFi2d_AnaFilletAlgo()
+    f.Init(ed1,ed2,gp_Pln())
+    f.Perform(radius)
+    return f.Result(ed1, ed2)
+
+def pipe_fillet(radius):
+    # the points
+    p1 = gp_Pnt(0,0,0)
+    p2 = gp_Pnt(0,1,0)
+    p3 = gp_Pnt(1,2,0)
+    p4 = gp_Pnt(2,2,0)
+    # the edges
+    ed1 = BRepBuilderAPI_MakeEdge(p1,p2).Edge()
+    ed2 = BRepBuilderAPI_MakeEdge(p2,p3).Edge()
+    ed3 = BRepBuilderAPI_MakeEdge(p3,p4).Edge()
+    # inbetween
+    fillet12 = filletEdges(ed1, ed2)
+    fillet23 = filletEdges(ed2, ed3) 
+    # the wire
+    makeWire = BRepBuilderAPI_MakeWire()
+    makeWire.Add(ed1)
+    makeWire.Add(fillet12)
+    makeWire.Add(ed2)
+    makeWire.Add(fillet23)
+    makeWire.Add(ed3)
+    makeWire.Build()
+    wire = makeWire.Wire()
+    # the pipe
+    dir = gp_Dir(0,1,0)
+    circle = gp_Circ(gp_Ax2(p1,dir), radius)
+    profile_edge = BRepBuilderAPI_MakeEdge(circle).Edge()
+    profile_wire = BRepBuilderAPI_MakeWire(profile_edge).Wire()
+    profile_face = BRepBuilderAPI_MakeFace(profile_wire).Face()
+    pipe = BRepOffsetAPI_MakePipe(wire, profile_face).Shape()
+    #display.DisplayShape(pipe, update=True)
+    return(pipe)
+
+# returns (TopoDS)shape of the sphere based on the parameters
+# centre/radius - the center/radius of the sphere
+
 def sphere(centre, radius):
     sphere = BRepPrimAPI_MakeSphere (centre, radius).Shape()
     return(sphere)
+
+
+# returns (TopoDS)shape of the 3 staged pipe based on the parameters
+# example of constructing the bent pipe
+# the parts of pipe are joined with spheres in order to smooth irregularities or build different pipe joints
+# the optimal way to create bent pipe would be to put radius_pipe=radius_sphere
+# radius_pipe - radius of the all parts of the pipe
+# radius_sphere - radius of the joint spheres
 
 def pipe_3(radius_pipe, radius_sphere):
     pipe1=pipe(gp_Pnt(0,0,0), gp_Pnt(0,0,1), radius_pipe)
